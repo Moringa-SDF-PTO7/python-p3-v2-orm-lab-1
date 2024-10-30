@@ -25,24 +25,11 @@ class Review:
 
     @employee_id.setter
     def employee_id(self, value):
-        # Import Employee inside the setter to avoid circular import
-        from employee import Employee
-       
+        from employee import Employee  # Avoid circular import
         if Employee.find_by_id(value) is not None:
             self._employee_id = value
         else:
             raise ValueError("Employee ID must reference an existing employee")
-
-    @property
-    def summary(self):
-        return self._summary
-
-    @summary.setter
-    def summary(self, value):
-        if isinstance(value, str) and len(value) > 0:
-            self._summary = value
-        else:
-            raise ValueError("Summary must be a non-empty string")
 
     @property
     def year(self):
@@ -54,7 +41,17 @@ class Review:
             self._year = value
         else:
             raise ValueError("Year must be an integer greater than or equal to 2000")
-        
+
+    @property
+    def summary(self):
+        return self._summary
+
+    @summary.setter
+    def summary(self, value):
+        if isinstance(value, str) and len(value) > 0:
+            self._summary = value
+        else:
+            raise ValueError("Summary must be a non-empty string")
     
 
     @classmethod
@@ -97,36 +94,36 @@ class Review:
         else:
             self.update()
 
-    @classmethod
-    def create(cls, year, summary, employee_id):
-        """ Initialize a new Review instance, save it to the database, and return the instance. """
-        review = cls(year, summary, employee_id)
-        review.save()
-        return review
+    # @classmethod
+    # def create(cls, year, summary, employee_id):
+    #     """ Initialize a new Review instance, save it to the database, and return the instance. """
+    #     review = cls(year, summary, employee_id)
+    #     review.save()
+    #     return review
 
-    @classmethod
-    def instance_from_db(cls, row):
-        """Return a Review instance created from a database row, using the cache if available."""
-        review_id = row[0]
+    # @classmethod
+    # def instance_from_db(cls, row):
+    #     """Return a Review instance created from a database row, using the cache if available."""
+    #     review_id = row[0]
 
-        # Check if the instance already exists in the cache
-        if review_id in cls.all:
-            review = cls.all[review_id]
-            # Update attributes in case the database values changed
-            review.year, review.summary, review.employee_id = row[1], row[2], row[3]
-        else:
-            # Create a new instance and cache it
-            review = cls(row[1], row[2], row[3], id=row[0])
-            cls.all[review_id] = review
+    #     # Check if the instance already exists in the cache
+    #     if review_id in cls.all:
+    #         review = cls.all[review_id]
+    #         # Update attributes in case the database values changed
+    #         review.year, review.summary, review.employee_id = row[1], row[2], row[3]
+    #     else:
+    #         # Create a new instance and cache it
+    #         review = cls(row[1], row[2], row[3], id=row[0])
+    #         cls.all[review_id] = review
 
-        return review
+    #     return review
 
-    @classmethod
-    def find_by_id(cls, id):
-        """Return a Review instance corresponding to the specified primary key."""
-        sql = "SELECT * FROM reviews WHERE id = ?"
-        row = CURSOR.execute(sql, (id,)).fetchone()
-        return cls.instance_from_db(row) if row else None
+    # @classmethod
+    # def find_by_id(cls, id):
+    #     """Return a Review instance corresponding to the specified primary key."""
+    #     sql = "SELECT * FROM reviews WHERE id = ?"
+    #     row = CURSOR.execute(sql, (id,)).fetchone()
+    #     return cls.instance_from_db(row) if row else None
 
     def update(self):
         """Update the table row corresponding to the current Review instance."""
@@ -163,3 +160,41 @@ class Review:
         rows = CURSOR.execute(sql, (employee_id,)).fetchall()
         return [cls.instance_from_db(row) for row in rows]
     
+    # def save(self):
+    #     """Insert or update a Review instance in the database."""
+    #     if self.id is None:
+    #         sql = """
+    #             INSERT INTO reviews (year, summary, employee_id)
+    #             VALUES (?, ?, ?)
+    #         """
+    #         CURSOR.execute(sql, (self.year, self.summary, self.employee_id))
+    #         CONN.commit()
+    #         self.id = CURSOR.lastrowid  # Capture the database ID
+    #         Review.all[self.id] = self  # Cache the instance
+    #     else:
+    #         self.update()
+
+    @classmethod
+    def create(cls, year, summary, employee_id):
+        """Create and persist a new Review instance."""
+        review = cls(year, summary, employee_id)
+        review.save()
+        return review
+    
+    @classmethod
+    def instance_from_db(cls, row):
+        """Create or retrieve a Review instance from a database row."""
+        if row[0] in cls.all:
+            review = cls.all[row[0]]
+            review.year, review.summary, review.employee_id = row[1], row[2], row[3]
+        else:
+            review = cls(row[1], row[2], row[3], id=row[0])
+            cls.all[review.id] = review
+        return review
+
+    @classmethod
+    def find_by_id(cls, id):
+        """Retrieve a Review instance by ID."""
+        sql = "SELECT * FROM reviews WHERE id = ?"
+        row = CURSOR.execute(sql, (id,)).fetchone()
+        return cls.instance_from_db(row) if row else None
